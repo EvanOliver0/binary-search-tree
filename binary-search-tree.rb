@@ -133,9 +133,7 @@ class Tree
 
   def insert(value, root=@root)
     if root.leaf?
-      root.value = value
-      root.left = Node.new(leaf=true)
-      root.right = Node.new(leaf=true)
+      root.replace_with Node.new(value)
     else
       insert(value, (value < root.value) ? root.left : root.right)
     end
