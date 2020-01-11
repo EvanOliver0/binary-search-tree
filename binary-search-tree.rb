@@ -61,34 +61,27 @@ class Tree
     (depth(@root.left) - depth(@root.right)).abs <= 1
   end
 
-  def delete(value)
-    current = @root
-    next_node = value < current.value ? current.left : current.right
-    until next_node.value == value || next_node.value == nil
-      current = next_node
-      next_node = value < current.value ? current.left : current.right
-    end
-
-    return nil if next_node.leaf?
-
-    if next_node.left.nil? && next_node.right.nil?
-      new_node = nil
-    elsif next_node.left.nil?
-      new_node = next_node.right
-    elsif next_node.right.nil?
-      new_node = next_node.left
+  def delete(value, root=@root)
+    if @root.value == value
+      @root = find_replacement(@root)
     else
-      new_node = depth(next_node.left) >= depth(next_node.right) ? \
-                 next_node.left : next_node.right
+      next_node = value < root.value ? root.left : root.right
+
+      return nil if next_node.leaf?
+
+      if next_node.value == value
+        new_node = find_replacement(next_node)
+        if next_node == root.left
+          root.left = new_node
+        else
+          root.right = new_node
+        end
+      else
+        delete(value, next_node)
+      end
     end
 
-    if next_node == current.left
-      current.left = new_node
-    else
-      current.right = new_node
-    end
-
-    return new_node
+    return nil
   end
 
   def depth(node)
@@ -99,21 +92,21 @@ class Tree
     return left_depth > right_depth ? left_depth : right_depth
   end
 
-  def find(value)
-    current = @root
-    current = (value < current.value) ? current.left : current.right \
-      until (current.leaf? || current.value == value)
-    return current.leaf? ? nil : current
+  def find(value, root=@root)
+    return root if root.value == value
+    return nil if root.leaf?
+    return find(value, (value < root.value) ? root.left : root.right)
   end
 
-  def insert(value)
-    current = @root
-    current = (value < current.value) ? current.left : current.right \
-      until current.leaf?
-    current.value = value
-    current.left = Node.new(leaf=true)
-    current.right = Node.new(leaf=true)
-    return current
+  def insert(value, root=@root)
+    if root.leaf?
+      root.value = value
+      root.left = Node.new(leaf=true)
+      root.right = Node.new(leaf=true)
+    else
+      insert(value, (value < root.value) ? root.left : root.right)
+    end
+    return root
   end
 
   def inorder
@@ -213,7 +206,23 @@ class Tree
     root.right = build_tree(data[(middle + 1)..-1])
     return root
   end
+
+  def find_replacement(node)
+    return nil if node.nil?
+    if node.leaf? || (node.left.leaf? && node.right.leaf?)
+      return Node.new(leaf=true)
+    elsif node.left.leaf?
+      return node.right
+    elsif node.right.leaf?
+      return node.left
+    else
+      return depth(node.left) >= depth(node.right) ? node.left : node.right
+    end
+  end
 end
+
+# Issues: delete is bjorked; if node to delete has two children, one will be lost.
+# Also applies to the iterative version.
 
 a = Array.new(15) { rand(1..100) }
 tree = Tree.new(a)
@@ -240,3 +249,5 @@ puts tree.balanced?
 tree.rebalance!
 puts tree
 puts tree.balanced?
+tree.delete(tree.root.value)
+puts tree
