@@ -18,6 +18,10 @@ class Node
     end
   end
 
+  def leaf?
+    @left.nil? && @right.nil?
+  end
+
   def left=(obj)
     return @left = obj if obj.class == Node
     raise "Cannot store #{obj.class} as a child of Node"
@@ -28,13 +32,16 @@ class Node
     raise "Cannot store #{obj.class} as a child of Node"
   end
 
+  def replace_with(node)
+    raise "Cannot replace Node with #{node.class}" unless node.class == Node
+    @value = node.value
+    @left = node.left
+    @right = node.right
+  end
+
   def <=>(other)
     return @value <=> other.value if other.class == Node
     raise "Cannot compare Node with #{other.class}"
-  end
-
-  def leaf?
-    @left.nil? && @right.nil?
   end
 
   def to_s
@@ -46,7 +53,8 @@ class Node
 
   def to_s_recursive(depth=0)
     return "" if self.leaf?
-    " " * depth + "#{@value}\n" + @left.to_s_recursive(depth + 1) + @right.to_s_recursive(depth + 1)
+    " " * depth + "#{@value}\n" + @left.to_s_recursive(depth + 1) + \
+      @right.to_s_recursive(depth + 1)
   end
 end
 
@@ -62,23 +70,28 @@ class Tree
   end
 
   def delete(value, root=@root)
-    if @root.value == value
-      @root = find_replacement(@root)
-    else
-      next_node = value < root.value ? root.left : root.right
+    return nil if root.nil? || root.leaf?
 
-      return nil if next_node.leaf?
-
-      if next_node.value == value
-        new_node = find_replacement(next_node)
-        if next_node == root.left
-          root.left = new_node
-        else
-          root.right = new_node
-        end
+    if root.value == value
+      if root.left.leaf? && root.right.leaf?
+        root.replace_with Node.new(leaf=true)
+      elsif root.left.leaf?
+        root.replace_with root.right
+      elsif root.right.leaf?
+        root.replace_with root.left
       else
-        delete(value, next_node)
+        if depth(root.left) > depth(root.right)
+          replacement = find_max(root.left)
+          root.value = replacement.value
+          replacement.replace_with(replacement.left)
+        else
+          replacement = find_min(root.right)
+          root.value = replacement.value
+          replacement.replace_with(replacement.right)
+        end
       end
+    else
+      delete(value, value < root.value ? root.left : root.right)
     end
 
     return nil
@@ -93,9 +106,29 @@ class Tree
   end
 
   def find(value, root=@root)
+    return nil if root.nil? || root.leaf?
     return root if root.value == value
-    return nil if root.leaf?
     return find(value, (value < root.value) ? root.left : root.right)
+  end
+
+  def find_max(node)
+    max = node
+    next_node = max.right
+    until next_node.leaf?
+      max = next_node
+      next_node = max.right
+    end
+    return max
+  end
+
+  def find_min(node)
+    min = node
+    next_node = min.left
+    until next_node.leaf?
+      min = next_node
+      next_node = min.left
+    end
+    return min
   end
 
   def insert(value, root=@root)
@@ -206,25 +239,9 @@ class Tree
     root.right = build_tree(data[(middle + 1)..-1])
     return root
   end
-
-  def find_replacement(node)
-    return nil if node.nil?
-    if node.leaf? || (node.left.leaf? && node.right.leaf?)
-      return Node.new(leaf=true)
-    elsif node.left.leaf?
-      return node.right
-    elsif node.right.leaf?
-      return node.left
-    else
-      return depth(node.left) >= depth(node.right) ? node.left : node.right
-    end
-  end
 end
 
-# Issues: delete is bjorked; if node to delete has two children, one will be lost.
-# Also applies to the iterative version.
-
-a = Array.new(15) { rand(1..100) }
+a = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89] #Array.new(15) { rand(1..100) }
 tree = Tree.new(a)
 puts tree
 puts "Level order:"
@@ -235,19 +252,9 @@ puts "Preorder:"
 p tree.preorder
 puts "Postorder:"
 p tree.postorder
-puts tree.find(1)
-tree.insert(500)
-puts tree.find(500)
-tree.delete(500)
-puts tree.find(500)
-puts tree.balanced?
-tree.insert(121)
-tree.insert(144)
-tree.insert(169)
+tree.delete 0
 puts tree
-puts tree.balanced?
-tree.rebalance!
+tree.delete 89
 puts tree
-puts tree.balanced?
 tree.delete(tree.root.value)
 puts tree
