@@ -140,70 +140,44 @@ class Tree
     return root
   end
 
-  def inorder
-    discovered = []
-    visited = []
+  def inorder(node=@root, &block)
+    return [] if node.nil? || node.leaf?
 
-    discovered.push @root
-    until discovered.empty? do
-      current = discovered.last
-      if visited.strict_include?(current.left) || current.left.leaf?
-        yield current if block_given?
-        visited.push(discovered.pop)
-        discovered.push(current.right) unless current.right.leaf?
-      else
-        discovered.push(current.left)
-      end
-    end
+    visited = inorder(node.left, &block)
+    yield node.value if block_given?
+    visited.push node.value
+    visited.concat( inorder(node.right, &block) )
 
-    return visited.reduce([]) { |values, node| values.push node.value }
+    return visited
   end
 
-  def postorder
-    discovered = []
-    visited = []
+  def postorder(node=@root, &block)
+    return [] if node.nil? || node.leaf?
 
-    discovered.push @root
-    until discovered.empty? do
-      current = discovered.last
-      if !(visited.strict_include?(current.left) || current.left.leaf?)
-        discovered.push(current.left)
-      elsif !(visited.strict_include?(current.right) || current.right.leaf?)
-        discovered.push(current.right)
-      else
-        yield current if block_given?
-        visited.push(discovered.pop)
-      end
-    end
+    visited = postorder(node.left, &block)
+    visited.concat( postorder(node.right, &block) )
+    yield node.value if block_given?
+    visited.push node.value
 
-    return visited.reduce([]) { |values, node| values.push node.value }
+    return visited
   end
 
-  def preorder
-    discovered = []
-    visited = []
+  def preorder(node=@root, &block)
+    return [] if node.nil? || node.leaf?
 
-    discovered.push @root
-    until discovered.empty? do
-      current = discovered.last
-      if visited.strict_include? current
-        discovered.pop
-        discovered.push(current.right) unless current.right.leaf?
-      else
-        yield current if block_given?
-        visited.push current
-        discovered.push(current.left) unless current.left.leaf?
-      end
-    end
+    yield node.value if block_given?
+    visited = [node.value]
+    visited.concat( preorder(node.left, &block) )
+    visited.concat( preorder(node.right, &block) )
 
-    return visited.reduce([]) { |values, node| values.push node.value }
+    return visited
   end
 
-  def level_order
+  def level_order(node=@root)
     discovered = []
     visited = []
 
-    discovered.push @root
+    discovered.push node
     until discovered.empty? do
       current = discovered.shift
 
@@ -214,7 +188,7 @@ class Tree
       discovered.push(current.right) unless current.right.leaf?
     end
 
-    return visited.reduce([]) { |values, node| values.push node.value }
+    return visited.reduce([]) { |values, n| values.push n.value }
   end
 
   def rebalance!
